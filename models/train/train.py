@@ -6,11 +6,10 @@ import tensorflow as tf
 # Load the training data
 emotion_ds = tf.keras.utils.image_dataset_from_directory(
   'data/emotions',
-  image_size=(150, 150),
+  shuffle=True,
+  image_size=(256, 256),
   batch_size=32
 )
-
-print(len(emotion_ds))
 
 # Get the class names
 class_names = emotion_ds.class_names
@@ -43,24 +42,27 @@ test_ds = test_ds.cache().prefetch(buffer_size=AUTOTUNE)
 
 # Data augmentation
 data_augmentation = tf.keras.Sequential([
-  tf.keras.layers.RandomFlip('horizontal', input_shape=(150, 150, 3)),
+  tf.keras.layers.RandomFlip('horizontal', input_shape=(256, 256, 3)),
   tf.keras.layers.RandomRotation(0.1),
   tf.keras.layers.RandomZoom(0.1),
+  tf.keras.layers.RandomContrast(0.1),
 ])
 
 # Build the model
 model = tf.keras.Sequential([
   data_augmentation,
   tf.keras.layers.Rescaling(1./255),
-  tf.keras.layers.Conv2D(32, 3, activation='relu', padding='same'),
-  tf.keras.layers.MaxPooling2D(),
-  tf.keras.layers.Conv2D(64, 3, activation='relu', padding='same'),
-  tf.keras.layers.MaxPooling2D(),
-  tf.keras.layers.Conv2D(64, 3, activation='relu', padding='same'),
-  tf.keras.layers.MaxPooling2D(),
-  tf.keras.layers.Dropout(0.1),
+  tf.keras.layers.Conv2D(32, (3,3), activation='relu'),
+  tf.keras.layers.MaxPooling2D((2,2)),
+  tf.keras.layers.Conv2D(64, (3,3), activation='relu'),
+  tf.keras.layers.MaxPooling2D((2,2)),
+  tf.keras.layers.Conv2D(64, (3,3), activation='relu'),
+  tf.keras.layers.MaxPooling2D((2,2)),
+  tf.keras.layers.Conv2D(64, (3,3), activation='relu'),
+  tf.keras.layers.MaxPooling2D((2,2)),
+  tf.keras.layers.Dropout(0.2),
   tf.keras.layers.Flatten(),
-  tf.keras.layers.Dense(128, activation='relu'),
+  tf.keras.layers.Dense(64, activation='relu'),
   tf.keras.layers.Dense(6, activation='softmax')
 ])
 
