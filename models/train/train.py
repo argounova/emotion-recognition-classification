@@ -6,6 +6,8 @@ import tensorflow as tf
 from tensorflow import keras
 from keras import layers
 from keras import Sequential
+# from keras import to_categorical
+# from sklearn.metrics import classification_report, confusion_matrix
 
 
 
@@ -89,7 +91,7 @@ train_ds = train_ds.cache().shuffle(1000).prefetch(buffer_size=AUTOTUNE)
 val_ds = val_ds.cache().prefetch(buffer_size=AUTOTUNE)
 
 # Data augmentation
-data_augmentation = tf.keras.Sequential([
+data_augmentation = Sequential([
   layers.RandomFlip('horizontal', input_shape=(144, 144, 3)),
   layers.RandomRotation(0.1),
   layers.RandomZoom(0.1),
@@ -99,23 +101,25 @@ data_augmentation = tf.keras.Sequential([
 # Build the model
 model = Sequential([
   data_augmentation,
-  layers.Rescaling(1./255, input_shape=(144, 144, 3)),
+  layers.Rescaling(1./255),
 
   layers.Conv2D(32, (3,3), activation='relu'),
   layers.MaxPooling2D((2,2)),
-  layers.Dropout(0.2),
+  # layers.Dropout(0.2),
 
   layers.Conv2D(64, (3,3), activation='relu'),
   layers.MaxPooling2D((2,2)),
-  layers.Dropout(0.3),
   
-  layers.Conv2D(128, (3,3), activation='relu'),
+  # layers.Dropout(0.2),
+  
+  layers.Conv2D(64, (3,3), activation='relu'),
   layers.MaxPooling2D((2,2)),
-  layers.Dropout(0.4),
+  # layers.Dropout(0.4),
 
-  layers.Flatten(),
+  layers.GlobalAveragePooling2D(),
+  layers.BatchNormalization(),
   layers.Dense(128, activation='relu'),
-  layers.Dropout(0.5),
+  layers.Dropout(0.2),
   layers.Dense(6, activation='softmax')
 ])
 
@@ -128,8 +132,8 @@ model.compile(
 
 print(model.summary())
 
-# # Train the model
-epochs=5
+# Train the model
+epochs=10
 history = model.fit(
   train_ds,
   validation_data=val_ds,
@@ -160,3 +164,7 @@ plt.plot(epochs_range, val_loss, label='Validation Loss')
 plt.legend(loc='upper right')
 plt.title('Training and Validation Loss')
 plt.show()
+
+# Save the model
+
+# Generate a classification report
