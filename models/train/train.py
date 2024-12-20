@@ -8,82 +8,80 @@ from keras import layers
 from keras import Sequential
 # from keras import to_categorical
 # from sklearn.metrics import classification_report, confusion_matrix
+import warnings
+warnings.filterwarnings("ignore")
 
 
 
 # Load the dataset
-emotion_ds = 'data/emotions'
+# emotion_ds = 'data/emotions'
+sports_train_ds = 'data/sports/train'
+sports_test_ds = 'data/sports/test'
+sports_valid_ds = 'data/sports/valid'
 
 
 # Load the training data
 train_ds = tf.keras.utils.image_dataset_from_directory(
-  emotion_ds,
+  sports_train_ds,
   labels='inferred',
-  label_mode='int',
+  label_mode='categorical',
+  class_names=None,
   color_mode='rgb',
-  batch_size=32,
-  image_size=(144, 144),
+  batch_size=20,
+  image_size=(224, 224),
   shuffle=True,
-  seed=123,
-  validation_split=0.2,
-  subset='training',
+  seed=None,
+  validation_split=None,
+  subset=None,
+  interpolation='bilinear',
+  follow_links=False, 
 )
 
 val_ds = tf.keras.utils.image_dataset_from_directory(
-  emotion_ds,
+  sports_valid_ds,
   labels='inferred',
-  label_mode='int',
+  label_mode='categorical',
+  class_names=None,
   color_mode='rgb',
-  batch_size=32,
-  image_size=(144, 144),
+  batch_size=20,
+  image_size=(224, 224),
   shuffle=True,
-  seed=123,
-  validation_split=0.2,
-  subset='validation',
+  seed=None,
+  validation_split=None,
+  subset=None,
+  interpolation='bilinear',
+  follow_links=False,
 )
 
-# class_labels = train_ds.class_names
-# plt.figure(figsize=(15,10))
-# shown_classes = set()
-# for images, labels in train_ds.take(1):
-#   for i in range(len(images)):
-#     class_name = class_labels[labels[i]]
-#     if class_name in shown_classes:
-#       ax = plt.subplot(1, 6, len(shown_classes) + 1)
-#       plt.imshow(images[i].numpy().astype("uint8"))
-#       plt.title(class_name) 
-#       plt.axis("off")
-#       shown_classes.add(class_name)
-#     if len(shown_classes) == len(class_labels):
-#       break
-  
-# plt.tight_layout()
-# plt.show()
+test_ds = tf.keras.utils.image_dataset_from_directory(
+  sports_test_ds,
+  labels='inferred',
+  label_mode='categorical',
+  class_names=None,
+  color_mode='rgb',
+  batch_size=20,
+  image_size=(224, 224),
+  shuffle=True,
+  seed=None,
+  validation_split=None,
+  subset=None,
+  interpolation='bilinear',
+  follow_links=False,
+)
 
-
-
-# Get the class names
-# class_names = emotion_ds.class_names
-
-# Split the dataset into training, validation, and test datasets
-# def get_partitions(
-#   ds,
-#   train_size=0.8,
-#   val_size=0.1,
-#   test_size=0.1,
-#   shuffle=True,
-#   shuffle_size=10000,
-# ):
-#   ds_size=len(ds)
-#   if shuffle:
-#     ds = ds.shuffle(shuffle_size, seed=12)
-#   train_size = int(ds_size * train_size)
-#   val_size = int(ds_size * val_size)
-#   test_size = int(ds_size * test_size)
-#   return ds.take(train_size), ds.skip(train_size).take(val_size), ds.skip(train_size + val_size).take(test_size)
-  
-# Get the training, validation, and test datasets
-# train_ds, val_ds, test_ds = get_partitions(emotion_ds)
+#  Get the class names and display the images
+plt.rcParams['figure.figsize']= (20,8)
+class_names = train_ds.class_names
+plt.figure(figsize=(20,12))
+for x in train_ds.take(1):
+    for i in range(15):
+        plt.subplot(3,5,i+1)
+        image = x[0][i] / 255.
+        plt.imshow(image)
+        label_index = np.argmax(x[1][i].numpy())
+        plt.title(class_names[label_index])
+        plt.axis('off')
+plt.show()
 
 # Optimize the datasets for performance
 AUTOTUNE = tf.data.AUTOTUNE
@@ -92,54 +90,84 @@ val_ds = val_ds.cache().prefetch(buffer_size=AUTOTUNE)
 
 # Data augmentation
 data_augmentation = Sequential([
-  layers.RandomFlip('horizontal', input_shape=(144, 144, 3)),
+  layers.RandomFlip('horizontal', input_shape=(224, 224, 3)),
   layers.RandomRotation(0.1),
   layers.RandomZoom(0.1),
   layers.RandomContrast(0.1),
 ])
 
-# Build the model
-model = Sequential([
+# Create the model
+model = keras.Sequential([
   data_augmentation,
-  layers.Rescaling(1./255),
-
-  layers.Conv2D(32, (3,3), activation='relu'),
-  layers.MaxPooling2D((2,2)),
-  # layers.Dropout(0.2),
-
   layers.Conv2D(64, (3,3), activation='relu'),
   layers.MaxPooling2D((2,2)),
-  
-  # layers.Dropout(0.2),
-  
-  layers.Conv2D(64, (3,3), activation='relu'),
+  layers.Conv2D(128, (3,3), activation='relu'),
   layers.MaxPooling2D((2,2)),
-  # layers.Dropout(0.4),
-
-  layers.GlobalAveragePooling2D(),
-  layers.BatchNormalization(),
-  layers.Dense(128, activation='relu'),
-  layers.Dropout(0.2),
-  layers.Dense(6, activation='softmax')
+  layers.Conv2D(256, (3,3), activation='relu'),
+  layers.MaxPooling2D((2,2)),
+  layers.Conv2D(512, (3,3), activation='relu'),
+  layers.MaxPooling2D((2,2)),
+  layers.Flatten(),
+  layers.Dense(512, activation='relu'),
+  layers.Dropout(0.5),
+  layers.Dense(256, activation='relu'),
+  layers.Dropout(0.5),
+  layers.Dense(100, activation='softmax')
 ])
+
+# Build the model
+# model = Sequential([
+#   data_augmentation,
+#   layers.Rescaling(1./255),
+
+#   layers.Conv2D(64, (3,3), activation='relu'),
+#   layers.BatchNormalization(),
+#   layers.MaxPooling2D((2,2)),
+#   layers.Dropout(0.2),
+
+#   layers.Conv2D(128, (3,3), activation='relu'),
+#   layers.BatchNormalization(),
+#   layers.MaxPooling2D((2,2)),
+#   layers.Dropout(0.2),
+  
+#   layers.Conv2D(128, (3,3), activation='relu'),
+#   layers.BatchNormalization(),
+#   layers.MaxPooling2D((2,2)),
+#   layers.Dropout(0.4),
+
+#   layers.GlobalAveragePooling2D(),
+#   layers.Flatten(),
+#   layers.Dense(512, activation='relu'),
+#   layers.BatchNormalization(),
+#   layers.Dropout(0.5),
+
+#   layers.Dense(256, activation='relu'),
+#   layers.BatchNormalization(),
+#   layers.Dropout(0.5),
+
+#   layers.Dense(128, activation='relu'),
+#   layers.BatchNormalization(),
+#   layers.Dropout(0.5),
+
+#   layers.Dense(100, activation='softmax')
+# ])
 
 # Compile the model
 model.compile(
   optimizer='adam',
-  loss='sparse_categorical_crossentropy',
+  loss='categorical_crossentropy',
   metrics=['accuracy']
 )
 
 print(model.summary())
 
 # Train the model
-epochs=10
 history = model.fit(
   train_ds,
   validation_data=val_ds,
-  epochs=epochs,
+  epochs=10,
   verbose=1,
-  batch_size=32
+  batch_size=20
 )
 
 # Visualize the training results
@@ -149,7 +177,7 @@ val_acc = history.history['val_accuracy']
 loss = history.history['loss']
 val_loss = history.history['val_loss']
 
-epochs_range = range(epochs)
+epochs_range = range(10)
 
 plt.figure(figsize=(8, 8))
 plt.subplot(1, 2, 1)
@@ -166,5 +194,6 @@ plt.title('Training and Validation Loss')
 plt.show()
 
 # Save the model
+model.save('sports_model.h5')
 
 # Generate a classification report
